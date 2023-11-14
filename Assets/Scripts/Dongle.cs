@@ -5,18 +5,24 @@ using UnityEngine;
 public class Dongle : MonoBehaviour
 {
     public GameManager manager;
+    public ParticleSystem effect;
     public int level;
     public bool isDrag;
     public bool isMerge;
+
+    float deadTime;
+
     Rigidbody2D rigid;
     CircleCollider2D circle;
     Animator anim;
+    SpriteRenderer spriteRenderer;
 
     void Awake()
     {
         rigid = GetComponent<Rigidbody2D>();
         circle = GetComponent<CircleCollider2D>();
         anim = GetComponent<Animator>();
+        spriteRenderer = GetComponent<SpriteRenderer>();
     }
 
     void OnEnable()
@@ -99,6 +105,9 @@ public class Dongle : MonoBehaviour
             transform.position = Vector3.Lerp(transform.position, targetPos, 0.3f);
             yield return null;
         }
+
+        manager.score += (int)Mathf.Pow(2, level);
+
         isMerge = false;
         gameObject.SetActive(false);
     }
@@ -118,6 +127,7 @@ public class Dongle : MonoBehaviour
         yield return new WaitForSeconds(0.2f);
 
         anim.SetInteger("Level", level + 1);
+        EffectPlay();
 
         yield return new WaitForSeconds(0.3f);
 
@@ -126,5 +136,38 @@ public class Dongle : MonoBehaviour
         manager.maxLevel = Mathf.Max(level, manager.maxLevel);
 
         isMerge = false;
+    }
+
+    void OnTriggerStay2D(Collider2D other)
+    {
+        if(other.tag == "Finish")
+        {
+            deadTime += Time.deltaTime;
+
+            if(deadTime > 2)
+            {
+                spriteRenderer.color = new Color(0.9f, 0.2f, 0.2f);
+            }
+            else if(deadTime > 5)
+            {
+                manager.GameOver();
+            }
+        }
+    }
+
+    void OnTriggerExit2D(Collider2D other)
+    {
+        if(other.tag == "Finish")
+        {
+            deadTime = 0f;
+            spriteRenderer.color = Color.white;
+        }
+    }
+
+    void EffectPlay()
+    {
+        effect.transform.position = transform.position;
+        effect.transform.localScale = transform.localScale;
+        effect.Play();
     }
 }
