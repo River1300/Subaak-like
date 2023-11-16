@@ -40,6 +40,11 @@ public class GameManager : MonoBehaviour
 
     void NextDongle()
     {
+        if(isOver)
+        {
+            return;
+        }
+
         Dongle newDongle = GetDongle();
         lastDongle = newDongle;
         lastDongle.manager = this;
@@ -73,10 +78,31 @@ public class GameManager : MonoBehaviour
         lastDongle = null;
     }
 
+// BUG_A : 1) 왜 게임 오버가 되어도 필드에 남아있는 동글이들이 지워지지 않을까?
     public void GameOver()
     {
         if(isOver) return;
         isOver = true;
-        Debug.Log("GameOVER");
+        
+        StartCoroutine(GameOverRoutine());  // BUG_A : 2) 동글이를 지우는 코루틴 함수 호출
+    }
+
+    IEnumerator GameOverRoutine()
+    {
+        // 1. 장면 안에 활성화 되어 있는 모든 동글 가져오기
+        Dongle[] dongles = FindObjectsOfType<Dongle>();
+
+        // 2. 지우기 전에 모든 동글의 물리효과 비활성화
+        for(int index = 0; index < dongles.Length; index++)
+        {
+            dongles[index].rigid.simulated = false;
+        }
+
+        // 3. 1번의 목록을 하나씩 접근해서 지우기
+        for(int index = 0; index < dongles.Length; index++) //// BUG_A : 3) 동글이를 지우고
+        {
+            dongles[index].Hide(Vector3.up * 100);
+            yield return new WaitForSeconds(0.1f);
+        }
     }
 }

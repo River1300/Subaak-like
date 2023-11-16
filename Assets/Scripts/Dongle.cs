@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class Dongle : MonoBehaviour
 {
+    public Rigidbody2D rigid;
+
     public GameManager manager;
     public ParticleSystem effect;
     public int level;
@@ -12,7 +14,6 @@ public class Dongle : MonoBehaviour
 
     float deadTime;
 
-    Rigidbody2D rigid;
     CircleCollider2D circle;
     Animator anim;
     SpriteRenderer spriteRenderer;
@@ -92,7 +93,12 @@ public class Dongle : MonoBehaviour
         rigid.simulated = false;
         circle.enabled = false;
 
-        StartCoroutine(HideRoutine(targetPos));
+        if(targetPos == Vector3.up * 100)
+        {
+            EffectPlay();
+        }
+
+        StartCoroutine(HideRoutine(targetPos)); // BUG_A : 5) 동글이를 지우는 코루틴 함수 호출
     }
 
     IEnumerator HideRoutine(Vector3 targetPos)
@@ -102,7 +108,16 @@ public class Dongle : MonoBehaviour
         while(frameCount < 20)
         {
             frameCount++;
-            transform.position = Vector3.Lerp(transform.position, targetPos, 0.3f);
+
+            if(targetPos != Vector3.up * 100)
+            {
+                transform.position = Vector3.Lerp(transform.position, targetPos, 0.3f);
+            }
+            else if(targetPos == Vector3.up * 100)  // BUG_A : 6) 게임 오버 위치를 전달 받았다면 지운다.
+            {
+                transform.localScale = Vector3.Lerp(transform.localScale, Vector3.zero, 0.2f);
+            }
+            
             yield return null;
         }
 
@@ -148,7 +163,8 @@ public class Dongle : MonoBehaviour
             {
                 spriteRenderer.color = new Color(0.9f, 0.2f, 0.2f);
             }
-            else if(deadTime > 5)
+            // BUG_A : Result) 제어문을 else if 로 만들어 놓아서 밑의 제어문이 무시되고 있었다.
+            if(deadTime > 5)   // BUG_A : 4) 게임 오버 함수를 호출하고
             {
                 manager.GameOver();
             }
