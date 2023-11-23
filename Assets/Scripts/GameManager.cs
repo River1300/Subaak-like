@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
@@ -28,9 +29,24 @@ public class GameManager : MonoBehaviour
     public AudioClip[] sfxClip;
     public enum Sfx { LevelUp, Next, Attach, Button, Over };
 
-    [Header("----- [ TEXT ] -----")]
+    [Header("----- [ UI ] -----")]
+    public GameObject startGroup;
+    public GameObject endGroup;
+    public Image NextDongleImage;
+    public Sprite[] dongleSprite;
+    int spriteNum = 0;
     public Text scoreTxt;
+    public Text maxScoreTxt;
+    public Text subScoreTxt;
 
+    [Header("----- [ ETC ] -----")]
+    public GameObject WallPart;
+    public GameObject ScorePart;
+    public GameObject RecordPart;
+    public GameObject LevelPart;
+    public GameObject NextPart;
+    public GameObject InfoPart;
+    
     int sfxCursor;
 
     void Awake()
@@ -44,12 +60,38 @@ public class GameManager : MonoBehaviour
         {
             MakeDongle();
         }
+
+        if(!PlayerPrefs.HasKey("MaxScore"))
+        {
+            PlayerPrefs.SetInt("MaxScore", 0);
+        }
+
+        maxScoreTxt.text = PlayerPrefs.GetInt("MaxScore").ToString();
     }
 
-    void Start()
+    void Update()
     {
+        if(Input.GetButtonDown("Cancel"))
+        {
+            Application.Quit();
+        }
+    }
+
+    public void GameStart()
+    {
+        // 오브젝트 활성화
+        WallPart.SetActive(true);
+        ScorePart.SetActive(true);
+        RecordPart.SetActive(true);
+        LevelPart.SetActive(true);
+        NextPart.SetActive(true);
+        InfoPart.SetActive(true);
+        startGroup.SetActive(false);
+
         bgmPlayer.Play();
-        NextDongle();
+        SfxPlay(Sfx.Button);
+
+        Invoke("NextDongle", 1.5f);
     }
 
     Dongle MakeDongle()
@@ -94,7 +136,7 @@ public class GameManager : MonoBehaviour
         }
 
         lastDongle = GetDongle();
-        lastDongle.level = Random.Range(0, maxLevel);
+        lastDongle.level = spriteNum;
         lastDongle.gameObject.SetActive(true);
 
         SfxPlay(Sfx.Next);
@@ -103,6 +145,8 @@ public class GameManager : MonoBehaviour
 
     IEnumerator WaitNext()
     {
+        Next();
+
         while(lastDongle != null) {
             yield return null;
         }
@@ -110,6 +154,12 @@ public class GameManager : MonoBehaviour
         yield return new WaitForSeconds(2.5f);
 
         NextDongle();
+    }
+
+    void Next()
+    {
+        spriteNum = Random.Range(0, maxLevel);
+        NextDongleImage.sprite = dongleSprite[spriteNum];
     }
 
     public void TouchDown()
@@ -154,7 +204,29 @@ public class GameManager : MonoBehaviour
 
         yield return new WaitForSeconds(1f);
 
+        // 최고 점수 갱신
+        int maxScore = Mathf.Max(score, PlayerPrefs.GetInt("MaxScore"));
+        PlayerPrefs.SetInt("MaxScore", maxScore);
+        // 게임 오버 UI 표시
+        subScoreTxt.text = "점수 : " + scoreTxt.text;
+        endGroup.SetActive(true);
+
+        bgmPlayer.Stop();
         SfxPlay(Sfx.Over);
+    }
+
+    public void Reset()
+    {
+        SfxPlay(Sfx.Button);
+
+        StartCoroutine(ResetCoroutine());
+    }
+
+    IEnumerator ResetCoroutine()
+    {
+        yield return new WaitForSeconds(1f);
+
+        SceneManager.LoadScene(0);
     }
 
     public void SfxPlay(Sfx type)

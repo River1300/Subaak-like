@@ -52,13 +52,15 @@ public class Dongle : MonoBehaviour
         circle.enabled = true;
     }
 
+// BUG_B : 1) 분명 터치패드를 화면 전체로 지정하였는데 특정 지역을 눌러야만 터치가 입력이 인식된다.
     void Update()
     {
-        if(isDrag) {
+        if(isDrag)  // BUG_B : 2) 현재 터치 중 인지 확인하고 입력을 받는데 
+        {
             Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             // x축 경계 설정
-            float leftBorder = -5.0f + transform.localScale.x / 2;
-            float rightBorder = 5.0f - transform.localScale.x / 2;
+            float leftBorder = -5.4f + transform.localScale.x / 2;
+            float rightBorder = 5.4f - transform.localScale.x / 2;
 
             if(mousePos.x < leftBorder) {
                 mousePos.x = leftBorder;
@@ -67,15 +69,15 @@ public class Dongle : MonoBehaviour
                 mousePos.x = rightBorder;
             }
 
-            mousePos.y = 8;
+            mousePos.y = 7;
             mousePos.z = 0;
             transform.position = Vector3.Lerp(transform.position, mousePos, 0.1f);
         }
     }
 
-    public void Drag()
+    public void Drag()  // BUG_B : 3) 터치패드에 입력이 들어가는 순간 true가 된다.
     {
-        isDrag = true;
+        isDrag = true;  // BUG_B : Result) 캔버스에 만들어둔 UI의 순서가 문제였다.
     }
 
     public void Drop()
@@ -84,38 +86,31 @@ public class Dongle : MonoBehaviour
         rigid.simulated = true;
     }
 
-    void OnCollisionEnter2D(Collision2D other)
+    void LevelUp()
     {
-        if(isAttach)
-        {
-            return;
-        }
+        isMerge = true;
 
-        isAttach = true;
-        manager.SfxPlay(GameManager.Sfx.Attach);
+        rigid.velocity = Vector2.zero;
+        rigid.angularVelocity = 0;
+
+        StartCoroutine(LevelUpRoutine());
     }
 
-    void OnCollisionStay2D(Collision2D other)
+    IEnumerator LevelUpRoutine()
     {
-        if(other.gameObject.tag == "Dongle")
-        {
-            Dongle otherDongle = other.gameObject.GetComponent<Dongle>();
-            if(level == otherDongle.level && !isMerge && !otherDongle.isMerge && level < 7)
-            {
-                float meX = transform.position.x;
-                float meY = transform.position.y;
-                float otherX = otherDongle.transform.position.x;
-                float otherY = otherDongle.transform.position.y;
+        yield return new WaitForSeconds(0.2f);
 
-                // 1. 내가 아래에 있을 때
-                // 2. 동일한 높이일 때, 내가 오른쪽에 있을 때
-                if(meY < otherY || (meY == otherY && meX > otherX))
-                {
-                    otherDongle.Hide(transform.position);
-                    LevelUp();
-                }
-            }
-        }
+        anim.SetInteger("Level", level + 1);
+        EffectPlay();
+        manager.SfxPlay(GameManager.Sfx.LevelUp);
+
+        yield return new WaitForSeconds(0.3f);
+
+        level++;
+
+        manager.maxLevel = Mathf.Max(level, manager.maxLevel);
+
+        isMerge = false;
     }
 
     public void Hide(Vector3 targetPos)
@@ -160,31 +155,45 @@ public class Dongle : MonoBehaviour
         gameObject.SetActive(false);
     }
 
-    void LevelUp()
+    void EffectPlay()
     {
-        isMerge = true;
-
-        rigid.velocity = Vector2.zero;
-        rigid.angularVelocity = 0;
-
-        StartCoroutine(LevelUpRoutine());
+        effect.transform.position = transform.position;
+        effect.transform.localScale = transform.localScale;
+        effect.Play();
     }
 
-    IEnumerator LevelUpRoutine()
+    void OnCollisionEnter2D(Collision2D other)
     {
-        yield return new WaitForSeconds(0.2f);
+        if(isAttach)
+        {
+            return;
+        }
 
-        anim.SetInteger("Level", level + 1);
-        EffectPlay();
-        manager.SfxPlay(GameManager.Sfx.LevelUp);
+        isAttach = true;
+        manager.SfxPlay(GameManager.Sfx.Attach);
+    }
 
-        yield return new WaitForSeconds(0.3f);
+    void OnCollisionStay2D(Collision2D other)
+    {
+        if(other.gameObject.tag == "Dongle")
+        {
+            Dongle otherDongle = other.gameObject.GetComponent<Dongle>();
+            if(level == otherDongle.level && !isMerge && !otherDongle.isMerge && level < 12)
+            {
+                float meX = transform.position.x;
+                float meY = transform.position.y;
+                float otherX = otherDongle.transform.position.x;
+                float otherY = otherDongle.transform.position.y;
 
-        level++;
-
-        manager.maxLevel = Mathf.Max(level, manager.maxLevel);
-
-        isMerge = false;
+                // 1. 내가 아래에 있을 때
+                // 2. 동일한 높이일 때, 내가 오른쪽에 있을 때
+                if(meY < otherY || (meY == otherY && meX > otherX))
+                {
+                    otherDongle.Hide(transform.position);
+                    LevelUp();
+                }
+            }
+        }
     }
 
     void OnTriggerStay2D(Collider2D other)
@@ -212,12 +221,5 @@ public class Dongle : MonoBehaviour
             deadTime = 0f;
             spriteRenderer.color = Color.white;
         }
-    }
-
-    void EffectPlay()
-    {
-        effect.transform.position = transform.position;
-        effect.transform.localScale = transform.localScale;
-        effect.Play();
     }
 }
