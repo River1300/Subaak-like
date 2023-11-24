@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using System.IO;
 
 public class GameManager : MonoBehaviour
 {
@@ -28,16 +29,21 @@ public class GameManager : MonoBehaviour
     public AudioSource[] sfxPlayer;
     public AudioClip[] sfxClip;
     public enum Sfx { LevelUp, Next, Attach, Button, Over };
+    int sfxCursor;
 
     [Header("----- [ UI ] -----")]
     public GameObject startGroup;
     public GameObject endGroup;
+    public GameObject BestPanel;
     public Image NextDongleImage;
     public Sprite[] dongleSprite;
     int spriteNum = 0;
     public Text scoreTxt;
     public Text maxScoreTxt;
     public Text subScoreTxt;
+    public Text GoldTxt;
+    public Text SilverTxt;
+    public Text BronzeTxt;
 
     [Header("----- [ ETC ] -----")]
     public GameObject WallPart;
@@ -47,8 +53,6 @@ public class GameManager : MonoBehaviour
     public GameObject NextPart;
     public GameObject InfoPart;
     
-    int sfxCursor;
-
     void Awake()
     {
         Application.targetFrameRate = 60;
@@ -61,12 +65,15 @@ public class GameManager : MonoBehaviour
             MakeDongle();
         }
 
-        if(!PlayerPrefs.HasKey("MaxScore"))
-        {
-            PlayerPrefs.SetInt("MaxScore", 0);
-        }
+        // BUG_C : Result) 그러니깐 앱을 재 실행할 때 자꾸 점수가 초기화되어서 앱이 실행될 때 Json을 불러왔다.
+        DataManager.instance.LoadData();
 
-        maxScoreTxt.text = PlayerPrefs.GetInt("MaxScore").ToString();
+        // if(!PlayerPrefs.HasKey("MaxScore"))
+        // {
+        //     PlayerPrefs.SetInt("MaxScore", 0);
+        // }
+
+        // maxScoreTxt.text = PlayerPrefs.GetInt("MaxScore").ToString();
     }
 
     void Update()
@@ -87,6 +94,14 @@ public class GameManager : MonoBehaviour
         NextPart.SetActive(true);
         InfoPart.SetActive(true);
         startGroup.SetActive(false);
+
+        // #2. Load Json
+        // BUG_C : 4) 그래서 게임 매니저에서 점수를 배정하였다.
+        maxScoreTxt.text = DataManager.instance.Player.BestScore.ToString();
+        GoldTxt.text = DataManager.instance.Player.GoldScore.ToString();
+        SilverTxt.text = DataManager.instance.Player.SilverScore.ToString();
+        BronzeTxt.text = DataManager.instance.Player.BronzeScore.ToString();
+        DataManager.instance.LoadData();
 
         bgmPlayer.Play();
         SfxPlay(Sfx.Button);
@@ -204,9 +219,20 @@ public class GameManager : MonoBehaviour
 
         yield return new WaitForSeconds(1f);
 
+        if(DataManager.instance.Player.BestScore < score)
+        {
+            BestPanel.SetActive(true);
+        }
+
+        // #1. Save Json
+        //      => 게임 오버가 된 후에 최종 점수를 curScore에 저장한다.
+        DataManager.instance.Player.curScore = score;
+        DataManager.instance.SaveData();
+
         // 최고 점수 갱신
-        int maxScore = Mathf.Max(score, PlayerPrefs.GetInt("MaxScore"));
-        PlayerPrefs.SetInt("MaxScore", maxScore);
+        // int maxScore = Mathf.Max(score, PlayerPrefs.GetInt("MaxScore"));
+        // PlayerPrefs.SetInt("MaxScore", maxScore);
+
         // 게임 오버 UI 표시
         subScoreTxt.text = "점수 : " + scoreTxt.text;
         endGroup.SetActive(true);
